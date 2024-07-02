@@ -16,7 +16,7 @@ api_key = os.getenv("API_KEY")
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=[API_URL])
 
-client = OpenAI(api_key=api_key)
+client = OpenAI(api_key='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')
 
 def predict_category(question_text, model, vectorizer, class_labels, device):
     try:
@@ -60,6 +60,23 @@ def get_correct_answer():
     )
 
     return jsonify({'correct_answer': completion.choices[0].message.content})
+
+@app.route('/message_chat_bot', methods=['POST'])
+def message_chat_bot():
+    data = request.json
+    message = data.get('message')
+
+    prompt = f"{message}"
+
+    completion = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": "You are a QA assistant."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+
+    return jsonify({'response': completion.choices[0].message.content})
 
 if __name__ == '__main__':
     chunk = pd.read_csv(DATA_FILE_PATH, nrows=CHUNK_SIZE)

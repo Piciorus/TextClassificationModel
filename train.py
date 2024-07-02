@@ -3,7 +3,9 @@ import torch
 import torch.optim as optim
 from sklearn.metrics import accuracy_score
 from torch import nn
-from config import DEVICE, DATA_FILE_PATH, NUM_EPOCHS, LEARNING_RATE, CHUNK_SIZE, VECTORIZER, HIDDEN_SIZE, NUM_CLASSES
+from wandb import config
+import wandb
+from config import DEVICE, DATA_FILE_PATH, NUM_EPOCHS, CHUNK_SIZE, VECTORIZER, NUM_CLASSES
 from model import TextClassifier
 
 
@@ -21,11 +23,10 @@ def calculate_accuracy(y_true, y_pred):
 
 def train_model(data_file_path, vectorizer, model, device, num_epochs, learning_rate):
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-    chunk_size = 10000
+    optimizer = optim.Adam(model.parameters(), lr=config.learning_rate)
 
     for epoch in range(num_epochs):
-        data_stream = pd.read_csv(data_file_path, chunksize=chunk_size)
+        data_stream = pd.read_csv(data_file_path, chunksize=config.batch_size)
         total_loss = 0
         total_accuracy = 0
         num_batches = 0
@@ -50,8 +51,9 @@ def train_model(data_file_path, vectorizer, model, device, num_epochs, learning_
         average_accuracy = total_accuracy / num_batches
         print(f'Epoch [{epoch + 1}/{num_epochs}], Loss: {average_loss:.4f}, Accuracy: {average_accuracy:.4f}')
 
+        wandb.log({'epoch': epoch + 1, 'loss': average_loss, 'accuracy': average_accuracy})
 
-        save_checkpoint(model, optimizer, epoch, average_loss, f"checkpointbetter{epoch}.pt")
+        save_checkpoint(model, optimizer, epoch, average_loss, f"checkpoint{epoch}.pt")
 
     print("Training finished.")
 
@@ -60,6 +62,7 @@ if __name__ == '__main__':
     chunk = pd.read_csv(DATA_FILE_PATH, nrows=CHUNK_SIZE)
     X_chunk = VECTORIZER.fit_transform(chunk['Text'])
     input_size = X_chunk.shape[1]
-    model = TextClassifier(input_size, HIDDEN_SIZE, NUM_CLASSES).to(device)
-    train_model(DATA_FILE_PATH, VECTORIZER, model, DEVICE, NUM_EPOCHS, LEARNING_RATE)
-
+    with wandb.init():
+        config = wandb.config
+        model = TextClassifier(input_size, config.hidden_size, NUM_CLASSES).to(device)
+        train_model(DATA_FILE_PATH, VECTORIZER, model, DEVICE, NUM_EPOCHS, config.learning_rate)
