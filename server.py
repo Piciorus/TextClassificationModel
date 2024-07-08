@@ -16,7 +16,7 @@ api_key = os.getenv("API_KEY")
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=[API_URL])
 
-client = OpenAI(api_key='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')
+client = OpenAI(os.environ.get("MY_KEY"))
 
 def predict_category(question_text, model, vectorizer, class_labels, device):
     try:
